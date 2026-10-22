@@ -1,0 +1,144 @@
+Título: Gestión de venta y seguimiento de inventario — Tienda "Chosen"
+ 
+Narración del cliente
+ 
+"Soy la dueña de la tienda de zapatos CHOSEN. Necesitamos un sistema con dos tipos de usuario: el primero es de personal de tienda, que podrá registrar 
+ingresos de productos, salidas, cambios de talla y de modelo. El segundo tipo es para clientes, quienes realizarán pedidos y, una vez confirmados,
+podrán pasar a caja a pagar mediante QR, efectivo o tarjeta. Los clientes no pueden modificar productos; esas acciones corresponden exclusivamente al 
+personal. Cada venta debe registrar fecha, hora y monto. El inventario se organiza por categorías/modelos: calzado de hombre, niño, dama y deportes. 
+Cuando un cliente hace un pedido, se establece un plazo límite de pago; durante ese tiempo los productos del pedido se reservan y quedan temporalmente 
+fuera del inventario para evitar duplicidad. Si el plazo vence sin pago, los productos se reincorporan automáticamente al inventario."
+ 
+Suposiciones
+ 
+- Se identifica al personal por usuario/contraseña; al cliente por documento o correo electrónico.
+
+- Un cliente puede realizar varios pedidos en distintos momentos.
+
+- Cada producto tiene un código único; los 3 primeros dígitos del código indican su categoría.
+
+- Un pedido puede contener varios productos; un mismo producto puede estar en varios pedidos (en momentos distintos).
+
+- Si un pedido se cancela o vence, se libera el stock reservado.
+
+- "Pedido" y "Venta" se distinguen: el pedido es la reserva; la venta se concreta al efectuar el pago.
+ 
+Entidades y atributos (modelo conceptual)
+ 
+USUARIO_PERSONAL
+ 
+-  id_usuario_personal  (PK) — INT AUTO_INCREMENT
+-  usuario  VARCHAR(50) UNIQUE NOT NULL
+-  contraseña  VARCHAR(255) NOT NULL
+-  nombre  VARCHAR(100) NOT NULL
+-  apellido  VARCHAR(100) NOT NULL
+-  email     VARCHAR(150) UNIQUE NOT NULL
+- celular   VARCHAR(20)
+ 
+CLIENTE
+ 
+-  id_cliente  (PK) — INT AUTO_INCREMENT
+
+-  nombre  VARCHAR(100) NOT NULL
+
+-  apellido  VARCHAR(100) NOT NULL
+
+-  email  VARCHAR(150) UNIQUE NOT NULL
+
+-  celular  VARCHAR(20)
+
+-  direccion  VARCHAR(200)
+
+-  documento  VARCHAR(20) UNIQUE NOT NULL
+ 
+CATEGORIA
+ 
+-  id_categoria  (PK) — INT AUTO_INCREMENT
+
+-  nombre_categoria  VARCHAR(50) NOT NULL UNIQUE
+ 
+PRODUCTO
+ 
+-  id_producto  (PK) — VARCHAR(15)  ← código único, 3 primeros dígitos = categoría
+
+-  id_categoria  (FK → CATEGORIA) — INT NOT NULL
+
+-  modelo  VARCHAR(50) NOT NULL
+
+-  talla  VARCHAR(10) NOT NULL
+
+-  precio_unitario  DECIMAL(8,2) NOT NULL CHECK (precio_unitario > 0)
+
+-  stock_total  INT NOT NULL CHECK (stock_total >= 0)
+
+-  stock_disponible  INT NOT NULL CHECK (stock_disponible >= 0)
+ 
+PEDIDO
+ 
+-  id_pedido  (PK) — INT AUTO_INCREMENT
+
+-  id_cliente  (FK → CLIENTE) — INT  NOT NULL
+
+-  fecha_creacion  DATETIME DEFAULT CURRENT_TIMESTAMP
+
+-  fecha_limite_pago  DATETIME NOT NULL
+
+-  estado  VARCHAR(20) NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','pagado','vencido','cancelado'))
+
+-  monto_total  DECIMAL(10,2) NOT NULL CHECK (monto_total >= 0)
+ 
+DETALLE_PEDIDO (entidad asociativa N:M entre PEDIDO y PRODUCTO)
+ 
+-  id_pedido  (PK parcial, FK → PEDIDO)
+
+-  id_producto  (PK parcial, FK → PRODUCTO)
+
+-  cantidad  INT NOT NULL CHECK (cantidad > 0)
+
+-  precio_en_pedido  DECIMAL(8,2) NOT NULL
+ 
+PAGO
+ 
+-  id_pago  (PK) — INT AUTO_INCREMENT
+
+-  id_pedido  (FK → PEDIDO) — INT NOT NULL UNIQUE
+
+-  metodo_pago  VARCHAR(30) NOT NULL CHECK (metodo_pago IN ('efectivo','tarjeta','QR'))
+
+-  monto  DECIMAL(10,2) NOT NULL CHECK (monto > 0)
+
+-  fecha_pago  DATETIME DEFAULT CURRENT_TIMESTAMP
+
+HISTORIAL_INVENTARIO
+- id_movimiento (PK) — INT AUTO_INCREMENT
+- id_producto (FK → PRODUCTO) — VARCHAR(15) NOT NULL
+- id_usuario_personal (FK → USUARIO_PERSONAL) — INT NOT NULL
+- tipo_moviminento VARCHA(30) NOT NULL CHEK (tipo_movimiento IN ('ingreso' , 'salida' , 'ajuste_talla','ajuste_modelo'))
+- cantidad — INT NOT NULL
+- fecha_movimiento — DETETIME DEFAULT CURRENT_TIMESTAMP
+ 
+Relaciones y cardinalidades (justificación)
+ 
+- USUARIO_PERSONAL (1) — (N) PRODUCTO
+Un usuario del personal puede registrar muchos productos; cada producto es dado de alta/modificado por un único usuario en cada operación.
+
+- CLIENTE (1) — (N) PEDIDO
+Un cliente puede realizar varios pedidos; cada pedido pertenece a un solo cliente. 
+
+- PEDIDO (N) — (M) PRODUCTO → mediante DETALLE_PEDIDO
+Un pedido puede incluir varios productos; un producto puede figurar en muchos pedidos en distintos momentos. 
+
+- PEDIDO (1) — (1) PAGO
+Cada pedido se paga una sola vez; cada pago corresponde a un único pedido. 
+ 
+Restricciones de negocio importantes
+ 
+- Al crear un pedido: restar la cantidad del campo  stock_disponible  de cada producto involucrado.
+
+- Si el pedido pasa a estado 'vencido' o 'cancelado': devolver automáticamente las cantidades a  stock_disponible .
+
+- Validación de disponibilidad: al insertar en DETALLE_PEDIDO, la cantidad solicitada no debe superar el  stock_disponible .
+
+- Los 3 primeros dígitos de  id_producto  deben coincidir con  id_categoria .
+
+- Solo  USUARIO_PERSONAL  puede crear, modificar o eliminar productos; los clientes solo consultan y ordenan.
