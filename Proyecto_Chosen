@@ -10,23 +10,16 @@ Cuando un cliente hace un pedido, se establece un plazo límite de pago; durante
 fuera del inventario para evitar duplicidad. Si el plazo vence sin pago, los productos se reincorporan automáticamente al inventario."
  
 Suposiciones
- 
+
 - Se identifica al personal por usuario/contraseña; al cliente por documento o correo electrónico.
-
 - Un cliente puede realizar varios pedidos en distintos momentos.
-
 - Cada producto tiene un código único; los 3 primeros dígitos del código indican su categoría.
-
 - Un pedido puede contener varios productos; un mismo producto puede estar en varios pedidos (en momentos distintos).
-
 - Si un pedido se cancela o vence, se libera el stock reservado.
-
 - "Pedido" y "Venta" se distinguen: el pedido es la reserva; la venta se concreta al efectuar el pago.
  
-Entidades y atributos (modelo conceptual)
- 
+Entidades y atributos 
 USUARIO_PERSONAL
- 
 -  id_usuario_personal  (PK) — INT AUTO_INCREMENT
 -  usuario  VARCHAR(50) UNIQUE NOT NULL
 -  contraseña  VARCHAR(255) NOT NULL
@@ -36,88 +29,57 @@ USUARIO_PERSONAL
 - celular   VARCHAR(20)
  
 CLIENTE
- 
 -  id_cliente  (PK) — INT AUTO_INCREMENT
-
 -  nombre  VARCHAR(100) NOT NULL
-
 -  apellido  VARCHAR(100) NOT NULL
-
 -  email  VARCHAR(150) UNIQUE NOT NULL
-
 -  celular  VARCHAR(20)
-
 -  direccion  VARCHAR(200)
-
 -  documento  VARCHAR(20) UNIQUE NOT NULL
  
 CATEGORIA
- 
 -  id_categoria  (PK) — INT AUTO_INCREMENT
-
 -  nombre_categoria  VARCHAR(50) NOT NULL UNIQUE
- 
-PRODUCTO
- 
+
+PRODUCTO 
 -  id_producto  (PK) — VARCHAR(15)  ← código único, 3 primeros dígitos = categoría
-
 -  id_categoria  (FK → CATEGORIA) — INT NOT NULL
-
 -  modelo  VARCHAR(50) NOT NULL
-
 -  talla  VARCHAR(10) NOT NULL
-
 -  precio_unitario  DECIMAL(8,2) NOT NULL CHECK (precio_unitario > 0)
-
 -  stock_total  INT NOT NULL CHECK (stock_total >= 0)
-
 -  stock_disponible  INT NOT NULL CHECK (stock_disponible >= 0)
  
 PEDIDO
- 
 -  id_pedido  (PK) — INT AUTO_INCREMENT
-
 -  id_cliente  (FK → CLIENTE) — INT  NOT NULL
-
 -  fecha_creacion  DATETIME DEFAULT CURRENT_TIMESTAMP
-
 -  fecha_limite_pago  DATETIME NOT NULL
-
 -  estado  VARCHAR(20) NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','pagado','vencido','cancelado'))
-
 -  monto_total  DECIMAL(10,2) NOT NULL CHECK (monto_total >= 0)
  
-DETALLE_PEDIDO (entidad asociativa N:M entre PEDIDO y PRODUCTO)
- 
+DETALLE_PEDIDO 
 -  id_pedido  (PK parcial, FK → PEDIDO)
-
 -  id_producto  (PK parcial, FK → PRODUCTO)
-
 -  cantidad  INT NOT NULL CHECK (cantidad > 0)
-
 -  precio_en_pedido  DECIMAL(8,2) NOT NULL
- 
-PAGO
- 
+
+PAGO 
 -  id_pago  (PK) — INT AUTO_INCREMENT
-
 -  id_pedido  (FK → PEDIDO) — INT NOT NULL UNIQUE
-
 -  metodo_pago  VARCHAR(30) NOT NULL CHECK (metodo_pago IN ('efectivo','tarjeta','QR'))
-
 -  monto  DECIMAL(10,2) NOT NULL CHECK (monto > 0)
-
 -  fecha_pago  DATETIME DEFAULT CURRENT_TIMESTAMP
 
 HISTORIAL_INVENTARIO
-- id_movimiento (PK) — INT AUTO_INCREMENT
+- id_movimiento (PK) — INT AUTO_INCREMEN
 - id_producto (FK → PRODUCTO) — VARCHAR(15) NOT NULL
 - id_usuario_personal (FK → USUARIO_PERSONAL) — INT NOT NULL
 - tipo_moviminento VARCHA(30) NOT NULL CHEK (tipo_movimiento IN ('ingreso' , 'salida' , 'ajuste_talla','ajuste_modelo'))
 - cantidad — INT NOT NULL
 - fecha_movimiento — DETETIME DEFAULT CURRENT_TIMESTAMP
  
-Relaciones y cardinalidades (justificación)
+Relaciones y cardinalidades 
  
 - USUARIO_PERSONAL (1) — (N) PRODUCTO
 Un usuario del personal puede registrar muchos productos; cada producto es dado de alta/modificado por un único usuario en cada operación.
@@ -132,13 +94,39 @@ Un pedido puede incluir varios productos; un producto puede figurar en muchos pe
 Cada pedido se paga una sola vez; cada pago corresponde a un único pedido. 
  
 Restricciones de negocio importantes
- 
 - Al crear un pedido: restar la cantidad del campo  stock_disponible  de cada producto involucrado.
-
 - Si el pedido pasa a estado 'vencido' o 'cancelado': devolver automáticamente las cantidades a  stock_disponible .
-
 - Validación de disponibilidad: al insertar en DETALLE_PEDIDO, la cantidad solicitada no debe superar el  stock_disponible .
-
 - Los 3 primeros dígitos de  id_producto  deben coincidir con  id_categoria .
-
 - Solo  USUARIO_PERSONAL  puede crear, modificar o eliminar productos; los clientes solo consultan y ordenan.
+
+Primera forma normal (1FN)
+Una tabla cumple la primera forma normal cuando:
+- Cada columna contiene un solo valor.
+- No existen grupos de datos repetidos.
+- Cada registro puede identificarse mediante una clave primaria.
+- Todos los atributos contienen valores atómicos.
+
+Segunda forma normal (2FN)
+Una tabla cumple la segunda forma normal cuando:
+- Cumple la 1FN.
+- Todos los atributos que no son claves dependen de la clave primaria completa.
+- No existen dependencias parciales.
+
+Tercera forma normal (3FN)
+Una tabla cumple la tercera forma normal cuando:
+- Cumple la 2FN.
+- No existen dependencias transitivas.
+- Los atributos que no son claves dependen directamente de la clave primaria.
+Para conseguirlo, separamos la información en entidades independientes.
+
+Tabla	Clave primaria
+1	USUARIO_PERSONAL	id_usuario_personal
+2	CLIENTE	id_cliente
+3	CATEGORIA	id_categoria
+4	PRODUCTO	id_producto
+5	PEDIDO	id_pedido
+6	DETALLE_PEDIDO	id_pedido + id_producto
+7	VENTA	id_venta
+8	PAGO	id_pago
+9	HISTORIAL_INVENTARIO	id_movimiento
