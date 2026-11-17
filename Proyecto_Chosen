@@ -78,22 +78,36 @@ HISTORIAL_INVENTARIO
 - tipo_moviminento VARCHA(30) NOT NULL CHEK (tipo_movimiento IN ('ingreso' , 'salida' , 'ajuste_talla','ajuste_modelo'))
 - cantidad — INT NOT NULL
 - fecha_movimiento — DETETIME DEFAULT CURRENT_TIMESTAMP
- 
+VENTA 
+- id_venta (PK) — INT AUTO_INCREMEN
+- id_pedido (FK) — INT NOT NULL
+- fecha_venta — DETETIME DEFAULT CURRENT_TIMESTAMP
+- hora_venta — TIME NOT NULL
+- monto_total — DECIMAL(10,2) NOT NULL
+
 Relaciones y cardinalidades 
- 
-- USUARIO_PERSONAL (1) — (N) PRODUCTO
-Un usuario del personal puede registrar muchos productos; cada producto es dado de alta/modificado por un único usuario en cada operación.
 
-- CLIENTE (1) — (N) PEDIDO
-Un cliente puede realizar varios pedidos; cada pedido pertenece a un solo cliente. 
+1. USUARIO_PERSONAL (1) — (N) HISTORIAL_INVENTARIO
+Un usuario del personal puede realizar muchos movimientos de inventario; cada movimiento de inventario es realizado por un único usuario.
+2. PRODUCTO (1) — (N) HISTORIAL_INVENTARIO
+Un producto puede tener muchos movimientos registrados en el historial de inventario; cada movimiento corresponde a un único producto.
+3. CLIENTE (1) — (N) PEDIDO
+Un cliente puede realizar varios pedidos; cada pedido pertenece a un solo cliente.
+4. PEDIDO (1) — (N) DETALLE_PEDIDO
+Un pedido puede contener varios detalles de productos; cada detalle pertenece a un único pedido.
+5. PRODUCTO (1) — (N) DETALLE_PEDIDO
+Un producto puede aparecer en muchos detalles de pedidos; cada detalle corresponde a un único producto.
+6. PEDIDO (N) — (M) PRODUCTO → mediante DETALLE_PEDIDO
+Un pedido puede incluir varios productos y un producto puede aparecer en diferentes pedidos.
+7. PEDIDO (1) — (1) VENTA
+Cada pedido genera una única venta y cada venta corresponde a un solo pedido.
+8. PEDIDO (1) — (1) PAGO
+Cada pedido tiene un pago asociado y cada pago corresponde a un único pedido.
+9. PRODUCTO (N) — (1) CATEGORIA
+Una categoría puede agrupar muchos productos; cada producto pertenece a una sola categoría.
 
-- PEDIDO (N) — (M) PRODUCTO → mediante DETALLE_PEDIDO
-Un pedido puede incluir varios productos; un producto puede figurar en muchos pedidos en distintos momentos. 
-
-- PEDIDO (1) — (1) PAGO
-Cada pedido se paga una sola vez; cada pago corresponde a un único pedido. 
- 
 Restricciones de negocio importantes
+
 - Al crear un pedido: restar la cantidad del campo  stock_disponible  de cada producto involucrado.
 - Si el pedido pasa a estado 'vencido' o 'cancelado': devolver automáticamente las cantidades a  stock_disponible .
 - Validación de disponibilidad: al insertar en DETALLE_PEDIDO, la cantidad solicitada no debe superar el  stock_disponible .
